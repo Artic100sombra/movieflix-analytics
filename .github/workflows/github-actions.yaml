@@ -24,7 +24,7 @@ jobs:
 
       - name: Test backend container
         run: |
-          docker run -d -p 8080:8080 --name test-backend ${{ secrets.DOCKERHUB_USERNAME }}/movieflix-backend:latest
+          docker run -d -p 8080:8080 --name test-backend ${{ secrets.DOCKERHUB_USERNAME }}/movieflix-project:latest
           echo "Esperando o backend iniciar..."
           for i in {1..30}; do
             if curl -s http://localhost:8080/actuator/health > /dev/null; then
