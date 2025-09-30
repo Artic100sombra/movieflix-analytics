@@ -18,34 +18,44 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      # Backend
-      - name: Build backend image
-        run: docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/movieflix-project:latest ./movieflix-project
+# Estágio de teste - Como o backend espera o banco de dados saudável pra rodar, precisamos buildar todos juntos e subir para fazer os testes
+# Além disso, temos que parar todos os conteineres depois do teste. Para isso usamos o if: always() para garantir que mesmo que haja
+# erro nas etapas anteriores, os conteineres sejam parados.
 
-      - name: Test backend container
+      - name: Build images using Docker Compose
+        run: docker compose build
+
+      - name: Start services for testing
+        run: docker compose up -d db backend frontend
+
+      - name: Wait for services to be ready and Test Backend
         run: |
-          docker run -d -p 8080:8080 --name test-backend ${{ secrets.DOCKERHUB_USERNAME }}/movieflix-project:latest
-          echo "Esperando o backend iniciar"
-          sleep 30
-          curl -f http://localhost:8080/movies || (echo "Backend falhou" && exit 1)
-          docker stop test-backend
-          docker rm test-backend
+          echo "Waiting 45 seconds for DB and Backend to fully initialize..."
+          sleep 45
+          echo "Running Backend Health Check on /movies"
+          # Check the working endpoint
+          curl -f http://localhost:8080/movies || (echo "Backend falhou ao responder" && exit 1)
+
+      - name: Test Frontend container
+        run: |
+          echo "Running Frontend Health Check"
+          curl -f http://localhost:80 || (echo "Frontend falhou ao responder" && exit 1)
+          
+      - name: Stop services after test (Cleanup)
+        if: always() 
+        run: docker compose down -v
+
+# Estágio de Push - Agora que os testes foram feitos com sucesso, podemos fazer o push das nossas aplicações pro dockerhub
+      # Backend
+      - name: Build and Tag backend image for push
+        run: docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/movieflix-project:latest ./movieflix-project
 
       - name: Push backend image
         run: docker push ${{ secrets.DOCKERHUB_USERNAME }}/movieflix-project:latest
 
       # Frontend
-      - name: Build frontend image
+      - name: Build and Tag frontend image for push
         run: docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/movieflix-frontend:latest ./movieflix-frontend
-
-      - name: Test frontend container
-        run: |
-          docker run -d -p 8081:80 --name test-frontend ${{ secrets.DOCKERHUB_USERNAME }}/movieflix-frontend:latest
-          echo "Esperando o frontend iniciar"
-          sleep 10
-          curl -f http://localhost:8081 || (echo "Frontend falhou" && exit 1)
-          docker stop test-frontend
-          docker rm test-frontend
 
       - name: Push frontend image
         run: docker push ${{ secrets.DOCKERHUB_USERNAME }}/movieflix-frontend:latest
