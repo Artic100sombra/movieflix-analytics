@@ -1,0 +1,58 @@
+name: Docker Push and Test 
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  build-test-push:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # Backend
+      - name: Build backend image
+        run: docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/movieflix-project:latest ./movieflix-project
+
+      - name: Test backend container
+        run: |
+          docker run -d -p 8080:8080 --name test-backend ${{ secrets.DOCKERHUB_USERNAME }}/movieflix-project:latest
+          echo "Esperando o backend iniciar"
+          sleep 20
+          curl -f http://localhost:8080 || (echo "Backend falhou" && exit 1)
+          docker stop test-backend
+          docker rm test-backend
+
+      - name: Push backend image
+        run: docker push ${{ secrets.DOCKERHUB_USERNAME }}/movieflix-project:latest
+
+      # Frontend
+      - name: Build frontend image
+        run: docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/movieflix-frontend:latest ./movieflix-frontend
+
+      - name: Test frontend container
+        run: |
+          docker run -d -p 8081:80 --name test-frontend ${{ secrets.DOCKERHUB_USERNAME }}/movieflix-frontend:latest
+          echo "Esperando o frontend iniciar"
+          sleep 10
+          curl -f http://localhost:8081 || (echo "Frontend falhou" && exit 1)
+          docker stop test-frontend
+          docker rm test-frontend
+
+      - name: Push frontend image
+        run: docker push ${{ secrets.DOCKERHUB_USERNAME }}/movieflix-frontend:latest
+
+      # Data Loader
+      - name: Build loader image
+        run: docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/movieflix-data:latest ./movieflix-data
+
+      - name: Push loader image
+        run: docker push ${{ secrets.DOCKERHUB_USERNAME }}/movieflix-data:latest

@@ -1,0 +1,61 @@
+# Docker compose - Utilizei ele para facilitar um pouco e não ter que subir aplicação por aplicação toda vez.
+# Criei uma network para todos as aplicações utilizarem (embora pelo que li depois o docker compose faz isso automaticamente)
+networks:
+  movieflix-network:
+
+# Aqui são as aplicações que vamos subir para o projeto
+services:
+# Primeiro subimos o banco de dados em postgres com seu usuário senha e utiliza a mesma rede que criamos.
+# Um detalhe extra: por algum motivo eu não estava conseguindo subir o banco de dados antes do loader mesmo com
+# o depends on. Decidi colocar um health check então e fiz o loader depender desse health check tbm
+  db:
+    image: postgres:15
+    container_name: movieflix-db
+    environment:
+      POSTGRES_DB: moviesdb
+      POSTGRES_USER: movieuser
+      POSTGRES_PASSWORD: moviepass
+    ports:
+      - "5432:5432"
+    networks:
+      - movieflix-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U movieuser -d moviesdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+# Aqui subimos o backend que depende também do banco de dados
+  backend:
+    build: ./movieflix-project
+    container_name: movieflix-backend
+    depends_on:
+      - db
+    ports:
+      - "8080:8080"
+    networks:
+      - movieflix-network
+# Aqui subimos o frontend que depende do backend
+  frontend:
+    build: ./movieflix-frontend
+    container_name: movieflix-frontend
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+    networks:
+      - movieflix-network
+# Por fim subimos o loader que depende do banco de dados estar saudável para subir também
+  loader:
+    build: ./movieflix-data
+    container_name: movieflix-loader
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_NAME: moviesdb
+      DB_USER: movieuser
+      DB_PASS: moviepass
+      DB_HOST: db
+      DB_PORT: 5432
+    networks:
+      - movieflix-network

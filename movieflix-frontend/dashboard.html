@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Movieflix Analytics Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+body {
+    font-family: "Comic Sans MS", "Verdana", sans-serif;
+    background: linear-gradient(90deg, #000066, #000099);
+    color: #fff8dc;
+    margin: 0;
+    padding: 0;
+}
+header {
+    background: linear-gradient(to right, #0033cc, #000066);
+    padding: 20px;
+    text-align: center;
+    border-bottom: 4px solid #ffcc00;
+}
+.logo {
+    display: inline-block;
+    padding: 12px 30px;
+    background: #ffcc00;
+    color: #000066;
+    font-size: 36px;
+    font-weight: bold;
+    text-transform: uppercase;
+    border: 4px solid #000;
+    border-radius: 6px;
+    box-shadow: 4px 4px 0px #000;
+    transform: skew(-10deg);
+    text-shadow: 2px 2px #fff;
+}
+.logo span { color: #cc0000; }
+main { padding: 20px; max-width: 1000px; margin:auto; }
+canvas { background: #111155; margin-bottom: 40px; border:3px ridge #ffcc00; }
+footer {
+    text-align:center;
+    padding:10px;
+    background:#000033;
+    border-top:4px solid #ffcc00;
+    color:#cccccc;
+    font-size:12px;
+}
+</style>
+</head>
+<body>
+<header>
+    <div class="logo">Movie<span>flix</span> Analytics</div>
+</header>
+<main>
+    <h2>Top 5 Movies Rated by Brazilians</h2>
+    <canvas id="top5Brazil" width="800" height="400"></canvas>
+
+    <h2>Top 10 Movies Overall</h2>
+    <canvas id="top10Overall" width="800" height="400"></canvas>
+
+    <h2>Top 5 Movies Rated by Ages 0-17</h2>
+    <canvas id="top5Ages" width="800" height="400"></canvas>
+
+    <h2>Sci-Fi Movies</h2>
+    <canvas id="scifiMovies" width="800" height="400"></canvas>
+</main>
+<footer>&copy; 2001 Movieflix Analytics</footer>
+
+<script>
+const API_BASE = "/api/movies";
+
+async function fetchJSON(url) {
+    let res = await fetch(url);
+    return res.json();
+}
+
+function createBarChart(ctx, labels, data, color) {
+    new Chart(ctx, {
+        type: 'bar',
+        data: { labels: labels, datasets: [{ label: 'Average Rating', data: data, backgroundColor: color }] },
+        options: { scales: { y: { beginAtZero: true, max: 10 } } }
+    });
+}
+
+async function loadCharts() {
+    // Top 5 Brazilians
+    const top5Brazil = await fetchJSON(`${API_BASE}/top5-brazil`);
+    createBarChart(
+        document.getElementById('top5Brazil'),
+        top5Brazil.map(m => m.title),
+        top5Brazil.map(m => m.avgScore),
+        '#ffcc00'
+    );
+
+    // Top 10 Overall
+    const top10 = await fetchJSON(`${API_BASE}/top10-overall`);
+    createBarChart(
+        document.getElementById('top10Overall'),
+        top10.map(m => m.title),
+        top10.map(m => m.avgScore),
+        '#00ccff'
+    );
+
+    // Top 5 ages 0-17
+    const top5Ages = await fetchJSON(`${API_BASE}/top5-young`);
+    createBarChart(
+        document.getElementById('top5Ages'),
+        top5Ages.map(m => m.title),
+        top5Ages.map(m => m.avgScore),
+        '#ff6666'
+    );
+
+    const scifi = await fetchJSON(`${API_BASE}/scifi`);
+    createBarChart(
+        document.getElementById('scifiMovies'),
+        scifi.map(m => m.title),
+        scifi.map(m => m.score),
+        '#9b59b6'
+    );
+}
+
+loadCharts();
+</script>
+</body>
+</html>
