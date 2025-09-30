@@ -26,20 +26,24 @@ jobs:
         run: docker compose build
 
       - name: Start services for testing
-        run: docker compose up -d db backend frontend
+        run: docker compose up -d db backend frontend loader
 
       - name: Wait for services to be ready and Test Backend
         run: |
-          echo "Waiting 45 seconds for DB and Backend to fully initialize..."
-          sleep 45
-          echo "Running Backend Health Check on /movies"
-          # Check the working endpoint
+          echo "Vamos esperar 20 segundos para garantir que a aplicação está executando"
+          sleep 20
           curl -f http://localhost:8080/movies || (echo "Backend falhou ao responder" && exit 1)
 
       - name: Test Frontend container
         run: |
-          echo "Running Frontend Health Check"
+          echo "Testando o frontend"
           curl -f http://localhost:80 || (echo "Frontend falhou ao responder" && exit 1)
+
+      - name: Run and Test Loader Service (Simpler Exit Code Check)
+        run: |
+          echo "Rodando o loader"
+          docker compose up --abort-on-container-exit loader
+          echo "Loader finalizou sem problemas"
           
       - name: Stop services after test (Cleanup)
         if: always() 
