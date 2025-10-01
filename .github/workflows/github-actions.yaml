@@ -47,9 +47,10 @@ jobs:
           
       - name: Stop services after test (Cleanup)
         if: always() 
-        run: docker compose down -v
+        run: docker compose down
 
-# Estágio de Push - Agora que os testes foram feitos com sucesso, podemos fazer o push das nossas aplicações pro dockerhub
+# Estágio de Push - Agora que os testes foram feitos com sucesso, podemos fazer o push das nossas aplicações pro dockerhub.
+# Embora tenhamos feito build na etapa anterior, resolvo fazer o build de novo só para garantir que não estou enviando uma imagem quebrada para o hub.
       # Backend
       - name: Build and Tag backend image for push
         run: docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/movieflix-project:latest ./movieflix-project
